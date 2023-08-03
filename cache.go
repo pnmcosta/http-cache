@@ -164,7 +164,7 @@ func (c *Client) Middleware(next http.Handler) http.Handler {
 			value := rec.Body.Bytes()
 			now := time.Now()
 			expires := now.Add(c.ttl)
-			if statusCode < 400 {
+			if statusCode < http.StatusInternalServerError {
 				response := Response{
 					Value:      value,
 					Header:     result.Header,
