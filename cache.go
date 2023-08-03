@@ -58,15 +58,20 @@ type Response struct {
 	// Frequency is the count of times a cached response is accessed.
 	// Used for LFU and MFU algorithms.
 	Frequency int
+
+	// StatusCode is the cached response status code.
+	StatusCode int
 }
 
 // Client data structure for HTTP cache middleware.
 type Client struct {
-	adapter            Adapter
-	ttl                time.Duration
-	refreshKey         string
+	adapter    Adapter
+	ttl        time.Duration
+	refreshKey string
+
 	methods            []string
 	writeExpiresHeader bool
+	ignoreKeys         []string
 }
 
 // ClientOption is used to set Client settings.
@@ -104,11 +109,24 @@ func (c *Client) Middleware(next http.Handler) http.Handler {
 			}
 
 			params := r.URL.Query()
+
+			// clone url not to mutate
+			cURL := *r.URL
+
+			if len(c.ignoreKeys) > 0 {
+				for _, ik := range c.ignoreKeys {
+					delete(params, ik)
+				}
+
+				cURL.RawQuery = params.Encode()
+				key = generateKey(cURL.String())
+			}
+
 			if _, ok := params[c.refreshKey]; ok {
 				delete(params, c.refreshKey)
 
-				r.URL.RawQuery = params.Encode()
-				key = generateKey(r.URL.String())
+				cURL.RawQuery = params.Encode()
+				key = generateKey(cURL.String())
 
 				c.adapter.Release(key)
 			} else {
@@ -127,7 +145,10 @@ func (c *Client) Middleware(next http.Handler) http.Handler {
 						if c.writeExpiresHeader {
 							w.Header().Set("Expires", response.Expiration.UTC().Format(http.TimeFormat))
 						}
+
+						w.WriteHeader(response.StatusCode)
 						w.Write(response.Value)
+
 						return
 					}
 
@@ -150,6 +171,7 @@ func (c *Client) Middleware(next http.Handler) http.Handler {
 					Expiration: expires,
 					LastAccess: now,
 					Frequency:  1,
+					StatusCode: statusCode,
 				}
 				c.adapter.Set(key, response.Bytes(), response.Expiration)
 			}
@@ -298,6 +320,15 @@ func ClientWithMethods(methods []string) ClientOption {
 func ClientWithExpiresHeader() ClientOption {
 	return func(c *Client) error {
 		c.writeExpiresHeader = true
+		return nil
+	}
+}
+
+// ClientWithIgnoreKeys sets the parameter key(s) to ignore when
+// generating the cache key. Optional setting.
+func ClientWithIgnoreKeys(ignoreKeys ...string) ClientOption {
+	return func(c *Client) error {
+		c.ignoreKeys = ignoreKeys
 		return nil
 	}
 }

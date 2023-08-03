@@ -56,18 +56,22 @@ func TestMiddleware(t *testing.T) {
 			14974843192121052621: Response{
 				Value:      []byte("value 1"),
 				Expiration: time.Now().Add(1 * time.Minute),
+				StatusCode: 200,
 			}.Bytes(),
 			14974839893586167988: Response{
 				Value:      []byte("value 2"),
 				Expiration: time.Now().Add(1 * time.Minute),
+				StatusCode: 200,
 			}.Bytes(),
 			14974840993097796199: Response{
 				Value:      []byte("value 3"),
 				Expiration: time.Now().Add(-1 * time.Minute),
+				StatusCode: 200,
 			}.Bytes(),
 			10956846073361780255: Response{
 				Value:      []byte("value 4"),
 				Expiration: time.Now().Add(-1 * time.Minute),
+				StatusCode: 200,
 			}.Bytes(),
 		},
 	}
@@ -272,7 +276,7 @@ func TestResponseToBytes(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := tt.response.Bytes()
-			if b == nil || len(b) == 0 {
+			if len(b) == 0 {
 				t.Error("Bytes() failed to convert")
 				return
 			}
