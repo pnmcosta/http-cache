@@ -95,7 +95,11 @@ func (c *Client) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if c.cacheableMethod(r.Method) {
 			sortURLParams(r.URL)
-			key := generateKey(r.URL.String())
+
+			cURL := *r.URL // clone url not to mutate
+			key := generateKey(cURL.String())
+			params := cURL.Query()
+
 			if r.Method == http.MethodPost && r.Body != nil {
 				body, err := io.ReadAll(r.Body)
 				defer r.Body.Close()
@@ -104,16 +108,9 @@ func (c *Client) Middleware(next http.Handler) http.Handler {
 					return
 				}
 				reader := io.NopCloser(bytes.NewBuffer(body))
-				key = generateKeyWithBody(r.URL.String(), body)
+				key = generateKeyWithBody(cURL.String(), body)
 				r.Body = reader
-			}
-
-			params := r.URL.Query()
-
-			// clone url not to mutate
-			cURL := *r.URL
-
-			if len(c.ignoreKeys) > 0 {
+			} else if len(cURL.RawQuery) > 0 && len(c.ignoreKeys) > 0 {
 				cap := len(params)
 				for _, ik := range c.ignoreKeys {
 					delete(params, ik)
