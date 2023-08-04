@@ -114,12 +114,15 @@ func (c *Client) Middleware(next http.Handler) http.Handler {
 			cURL := *r.URL
 
 			if len(c.ignoreKeys) > 0 {
+				cap := len(params)
 				for _, ik := range c.ignoreKeys {
 					delete(params, ik)
 				}
 
-				cURL.RawQuery = params.Encode()
-				key = generateKey(cURL.String())
+				if cap != len(params) {
+					cURL.RawQuery = params.Encode()
+					key = generateKey(cURL.String())
+				}
 			}
 
 			if _, ok := params[c.refreshKey]; ok {
@@ -138,7 +141,6 @@ func (c *Client) Middleware(next http.Handler) http.Handler {
 						response.Frequency++
 						c.adapter.Set(key, response.Bytes(), response.Expiration)
 
-						//w.WriteHeader(http.StatusNotModified)
 						for k, v := range response.Header {
 							w.Header().Set(k, strings.Join(v, ","))
 						}

@@ -73,6 +73,11 @@ func TestMiddleware(t *testing.T) {
 				Expiration: time.Now().Add(-1 * time.Minute),
 				StatusCode: 200,
 			}.Bytes(),
+			14974837694562911566: Response{
+				Value:      []byte("value 5"),
+				Expiration: time.Now().Add(1 * time.Minute),
+				StatusCode: 401,
+			}.Bytes(),
 		},
 	}
 
@@ -81,6 +86,7 @@ func TestMiddleware(t *testing.T) {
 		ClientWithTTL(1*time.Minute),
 		ClientWithRefreshKey("rk"),
 		ClientWithMethods([]string{http.MethodGet, http.MethodPost}),
+		ClientWithIgnoreKeys("sig"),
 	)
 
 	handler := client.Middleware(httpTestHandler)
@@ -118,7 +124,7 @@ func TestMiddleware(t *testing.T) {
 			200,
 		},
 		{
-			"returns new response",
+			"returns qs new response",
 			"http://foo.bar/test-3?zaz=baz&baz=zaz",
 			"GET",
 			nil,
@@ -126,7 +132,7 @@ func TestMiddleware(t *testing.T) {
 			200,
 		},
 		{
-			"returns cached response",
+			"returns qs cached response",
 			"http://foo.bar/test-3?baz=zaz&zaz=baz",
 			"GET",
 			nil,
@@ -158,7 +164,7 @@ func TestMiddleware(t *testing.T) {
 			200,
 		},
 		{
-			"returns new cached response",
+			"POST returns new cached response",
 			"http://foo.bar/test-2",
 			"POST",
 			[]byte(`{"foo": "bar"}`),
@@ -166,7 +172,7 @@ func TestMiddleware(t *testing.T) {
 			200,
 		},
 		{
-			"returns new cached response",
+			"POST returns new cached response",
 			"http://foo.bar/test-2",
 			"POST",
 			[]byte(`{"foo": "bar"}`),
@@ -182,12 +188,28 @@ func TestMiddleware(t *testing.T) {
 			200,
 		},
 		{
-			"returns new response",
+			"POST returns new response",
 			"http://foo.bar/test-2",
 			"POST",
 			[]byte(`{"foo": "bar"}`),
 			"new value 12",
 			200,
+		},
+		{
+			"401 returns cached response",
+			"http://foo.bar/test-4",
+			"GET",
+			nil,
+			"value 5",
+			401,
+		},
+		{
+			"ignores key",
+			"http://foo.bar/test-4?sig",
+			"GET",
+			nil,
+			"value 5",
+			401,
 		},
 	}
 	for _, tt := range tests {
